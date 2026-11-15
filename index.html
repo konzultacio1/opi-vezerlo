@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Opi - Robot Vezérlő</title>
-    <script src="https://unpkg.com"></script>
+    <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         html, body { 
@@ -31,7 +31,7 @@
 
 <div id="video-container">
     <div id="status">Indítás...</div>
-    <video id="remote-video" autoplay playsinline></video>
+    <video id="remote-video" autoplay playsinline muted></video>
 </div>
 
 <div id="controls">
@@ -89,7 +89,9 @@
 
             room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
                 if (track.kind === LivekitClient.Track.Kind.Video) {
-                    track.attach(document.getElementById('remote-video'));
+                    const videoEl = document.getElementById('remote-video');
+                    track.attach(videoEl);
+                    videoEl.play().catch(() => {});
                     statusEl.innerText = "ÉLŐ VIDEÓ (" + ROOM_NAME + ")";
                 }
             });
