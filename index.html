@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Opi - Robot Vezérlő</title>
-    <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         html, body { 
@@ -16,7 +15,7 @@
             display: flex; 
             flex-direction: column; 
             height: 100vh; 
-            height: 100dvh; /* Alkalmazkodik a telefon alsó menüsávjához */
+            height: 100dvh;
             overflow: hidden; 
         }
         #video-container { 
@@ -37,7 +36,7 @@
             grid-template-columns: repeat(5, 1fr); 
             grid-template-rows: repeat(3, 1fr); 
             gap: 6px; 
-            padding: 8px 8px calc(18px + env(safe-area-inset-bottom)) 8px; /* Extra alsó hely */
+            padding: 8px 8px calc(18px + env(safe-area-inset-bottom)) 8px;
             background: #1e1e1e; 
         }
         button { background: #2c2c2c; color: white; border: 1px solid #444; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; touch-action: manipulation; transition: background 0.1s; }
@@ -49,34 +48,36 @@
 <body>
 
 <div id="video-container">
-    <div id="status">Csatlakozás...</div>
+    <div id="status">Betöltés...</div>
     <video id="remote-video" autoplay playsinline></video>
 </div>
 
 <div id="controls">
     <!-- 3. sor (felül) -->
-    <button onclick="sendCmd('Z+', this)">Z+</button>
-    <button onclick="sendCmd('Z-', this)">Z-</button>
-    <button class="btn-go" onclick="sendCmd('Go3', this)">Go3</button>
-    <button onclick="sendCmd('Front', this)">Front</button>
-    <button onclick="sendCmd('Back', this)">Back</button>
+    <button data-cmd="Z+">Z+</button>
+    <button data-cmd="Z-">Z-</button>
+    <button class="btn-go" data-cmd="Go3">Go3</button>
+    <button data-cmd="Front">Front</button>
+    <button data-cmd="Back">Back</button>
 
     <!-- 2. sor (közép) -->
-    <button class="btn-cam" onclick="sendCmd('CL90', this)">CL90</button>
-    <button class="btn-cam" onclick="sendCmd('CL', this)">CL</button>
-    <button class="btn-go" onclick="sendCmd('Go2', this)">Go2</button>
-    <button class="btn-cam" onclick="sendCmd('CR', this)">CR</button>
-    <button class="btn-cam" onclick="sendCmd('CR90', this)">CR90</button>
+    <button class="btn-cam" data-cmd="CL90">CL90</button>
+    <button class="btn-cam" data-cmd="CL">CL</button>
+    <button class="btn-go" data-cmd="Go2">Go2</button>
+    <button class="btn-cam" data-cmd="CR">CR</button>
+    <button class="btn-cam" data-cmd="CR90">CR90</button>
 
     <!-- 1. sor (alul) -->
-    <button onclick="sendCmd('RL90', this)">RL90</button>
-    <button onclick="sendCmd('RL', this)">RL</button>
-    <button class="btn-go" onclick="sendCmd('Go', this)">Go</button>
-    <button onclick="sendCmd('RR', this)">RR</button>
-    <button onclick="sendCmd('RR90', this)">RR90</button>
+    <button data-cmd="RL90">RL90</button>
+    <button data-cmd="RL">RL</button>
+    <button class="btn-go" data-cmd="Go">Go</button>
+    <button data-cmd="RR">RR</button>
+    <button data-cmd="RR90">RR90</button>
 </div>
 
-<script>
+<script type="module">
+    import { Room, RoomEvent, Track } from 'https://esm.sh';
+
     const LIVEKIT_URL = "wss://konzultacio1-robot-remote-6dg9v376.livekit.cloud";
     const API_KEY = "APIWmApdsmBWbRx";
     const API_SECRET = "jsfujp4fEas5azWkEI95XgxX5HNHMthA2cR1GM51XFC";
@@ -103,45 +104,50 @@
         return `${unsigned}.${sigBase64}`;
     }
 
-    async function init() {
-        const statusEl = document.getElementById('status');
-        try {
-            const token = await createToken("Opi_Operator", ROOM_NAME);
-            room = new LivekitClient.Room();
-
-            room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
-                if (track.kind === LivekitClient.Track.Kind.Video) {
-                    const videoEl = document.getElementById('remote-video');
-                    track.attach(videoEl);
-                    statusEl.innerText = "Élő kapcsolat (" + ROOM_NAME + ")";
-                }
-            });
-
-            room.on(LivekitClient.RoomEvent.TrackUnsubscribed, () => {
-                statusEl.innerText = "Robi kamerája kikapcsolva";
-            });
-
-            await room.connect(LIVEKIT_URL, token);
-            statusEl.innerText = "Csatlakozva, várakozás Robira...";
-            sendRaw("WAKE_UP");
-        } catch (e) {
-            statusEl.innerText = "Hiba: " + e.message;
-        }
-    }
-
     function sendRaw(text) {
         if (!room || room.state !== 'connected') return;
         const data = new TextEncoder().encode(text);
         room.localParticipant.publishData(data, { reliable: true });
     }
 
-    function sendCmd(cmd, btn) {
-        btn.classList.add('flash');
-        setTimeout(() => btn.classList.remove('flash'), 150);
-        sendRaw(cmd);
+    document.querySelectorAll('#controls button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const cmd = btn.getAttribute('data-cmd');
+            btn.classList.add('flash');
+            setTimeout(() => btn.classList.remove('flash'), 150);
+            sendRaw(cmd);
+        });
+    });
+
+    async function init() {
+        const statusEl = document.getElementById('status');
+        try {
+            statusEl.innerText = "Token generálás...";
+            const token = await createToken("Opi_Operator", ROOM_NAME);
+            room = new Room();
+
+            room.on(RoomEvent.TrackSubscribed, (track) => {
+                if (track.kind === Track.Kind.Video) {
+                    const videoEl = document.getElementById('remote-video');
+                    track.attach(videoEl);
+                    statusEl.innerText = "Élő kapcsolat (" + ROOM_NAME + ")";
+                }
+            });
+
+            room.on(RoomEvent.TrackUnsubscribed, () => {
+                statusEl.innerText = "Robi kamerája kikapcsolva";
+            });
+
+            statusEl.innerText = "Csatlakozás szerverhez...";
+            await room.connect(LIVEKIT_URL, token);
+            statusEl.innerText = "Csatlakozva (" + ROOM_NAME + ")";
+            sendRaw("WAKE_UP");
+        } catch (e) {
+            statusEl.innerText = "Hiba: " + e.message;
+        }
     }
 
-    window.onload = init;
+    init();
 </script>
 </body>
 </html>
