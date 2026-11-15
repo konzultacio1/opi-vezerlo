@@ -2,16 +2,44 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Opi - Robot Vezérlő</title>
     <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
-        body { margin: 0; padding: 0; background: #121212; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        #video-container { flex: 1; background: #000; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            background: #121212; 
+            color: white; 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            height: 100dvh; /* Alkalmazkodik a telefon alsó menüsávjához */
+            overflow: hidden; 
+        }
+        #video-container { 
+            flex: 1; 
+            background: #000; 
+            position: relative; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: hidden; 
+            min-height: 0;
+        }
         video { width: 100%; height: 100%; object-fit: contain; }
         #status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 14px; z-index: 10; }
-        #controls { height: 45vh; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; padding: 8px; background: #1e1e1e; }
+        #controls { 
+            height: 44dvh; 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            grid-template-rows: repeat(3, 1fr); 
+            gap: 6px; 
+            padding: 8px 8px calc(18px + env(safe-area-inset-bottom)) 8px; /* Extra alsó hely */
+            background: #1e1e1e; 
+        }
         button { background: #2c2c2c; color: white; border: 1px solid #444; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; touch-action: manipulation; transition: background 0.1s; }
         button:active, button.flash { background: #00e676 !important; color: #000 !important; }
         .btn-go { background: #1565c0; }
@@ -57,7 +85,6 @@
 
     let room;
 
-    // Helyi JWT Token generátor LiveKit-hez
     async function createToken(identity, roomName) {
         const header = { alg: "HS256", typ: "JWT" };
         const now = Math.floor(Date.now() / 1000);
@@ -96,8 +123,6 @@
 
             await room.connect(LIVEKIT_URL, token);
             statusEl.innerText = "Csatlakozva, várakozás Robira...";
-            
-            // Ébresztő jelzés küldése Robinak belépéskor
             sendRaw("WAKE_UP");
         } catch (e) {
             statusEl.innerText = "Hiba: " + e.message;
